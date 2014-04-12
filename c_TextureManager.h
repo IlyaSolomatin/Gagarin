@@ -6,7 +6,7 @@
 #include "myGraphicsFuncs.h"
 #include <assert.h>
 #include <vector>
-#include "cl_Object.h"
+#include "c_Object.h"
 //#include <iostream>
 
 
