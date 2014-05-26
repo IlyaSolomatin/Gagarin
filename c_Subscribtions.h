@@ -104,4 +104,33 @@ void c_Subscribtion_MouseButton::handleEvent ()
 
 #endif
 
+#ifndef SUBSCRIBTION_MOUSEEDGE
+#define SUBSCRIBTION_MOUSEEDGE 3
+
+class c_Subscribtion_MouseEdge: virtual public c_Subscribtion
+{
+public:
+    c_Subscribtion_MouseEdge (void (*ieventFunction) (c_Event* ievent));
+    virtual bool trigger (c_Event* ievent);
+    virtual void handleEvent ();
+};
+
+c_Subscribtion_MouseEdge::c_Subscribtion_MouseEdge(void (*ieventFunction) (c_Event* ievent)): c_Subscribtion (ieventFunction)
+{
+    setTriggeringEventType (MOUSEEDGE_EVENT);
+};
+
+bool c_Subscribtion_MouseEdge::trigger (c_Event* ievent)
+{
+
+};
+
+void c_Subscribtion_MouseEdge::handleEvent ()
+{
+    (*eventFunction) (getEvent ());
+    resetSubscribtion ();
+};
+
+#endif // SUBSCRIBTION_MOUSEEDGE
+
 #endif
