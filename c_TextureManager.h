@@ -6,7 +6,7 @@
 #include "myGraphicsFuncs.h"
 #include <assert.h>
 #include <vector>
-#include "c_Object.h"
+#include "c_Objects.h"
 //#include <iostream>
 
 
@@ -16,19 +16,21 @@ private:
     unsigned screenWidth;
     unsigned screenHeight;
     SDL_Surface* screen;
-    std::vector <c_Object*>* objects;
+    c_ObjectsTree* objects;
+    Uint32 lastTics;
+    unsigned short fps;
     //s_Texture background;
     //s_Texture ship;
     //int shipCond;
 
-    int loadTextures (std::vector <c_Object*>* iobjects);
+    int loadTextures (c_ObjectsTree* iobjects);
     int clear ();
     int render ();
 protected:
 public:
     c_TextureManager ();
-    int init (unsigned inScreenWidth, unsigned inScreenHeight, std::vector <c_Object*>* iobjects);
-    int refreshScreen (std::vector <c_Object*>* iobjects);
+    int init (unsigned inScreenWidth, unsigned inScreenHeight, c_ObjectsTree* iobjects);
+    int refreshScreen (c_ObjectsTree* iobjects);
     int switchShip ();
 };
 
@@ -36,15 +38,37 @@ c_TextureManager::c_TextureManager ()
 {
     screenWidth = 800; //DEFAULT
     screenHeight = 600; //DEFAULT
+    fps = 36; //DEFAULT
     screen = NULL;
     objects = NULL;
+    lastTics = SDL_GetTicks ();
 };
 
-int c_TextureManager::loadTextures (std::vector <c_Object*>* iobjects)
+int c_TextureManager::loadTextures (c_ObjectsTree* iobjects)
 {
     assert (iobjects);
     std::cout << "loading textures... \n";
+
+
+
+    c_ObjectsTreeIterator* treeIterator = iobjects -> getIterator ();
+    c_ObjectsContainer* graphicsContainer = treeIterator -> getContainer (OBJECT_SHIP);
+    c_ObjectsContainerIterator* graphicsIterator = graphicsContainer -> getIterator (iobjects -> getIterator ());
+    c_Object* ographics = NULL;
     int error = false;
+    while (ographics = graphicsIterator -> getNextObject ())
+    {
+        error = ((c_GraphicsObject*) ographics) -> loadTextures ();
+        if (error)
+        {
+            assert (0);
+            return error;
+        }
+    }
+
+    return 0;
+
+    /*int error = false;
     for (std::vector <c_Object*>::iterator object = iobjects -> begin (); object < iobjects -> end (); object++)
         switch (((c_Object*) *object) -> getKind ())
         {
@@ -67,12 +91,28 @@ int c_TextureManager::loadTextures (std::vector <c_Object*>* iobjects)
                     return error;
                 }
                 break;
-        }
-
-        return 0;
+            case OBJECT_STAR:
+                std::cout << "load OBJECT_STAR\n";
+                error = ((c_GraphicsObject*) *object) -> loadTextures ();
+                if (error)
+                {
+                    assert (0);
+                    return error;
+                }
+                break;
+            case OBJECT_PLANET:
+                std::cout << "load OBJECT_PLANET\n";
+                error = ((c_GraphicsObject*) *object) -> loadTextures ();
+                if (error)
+                {
+                    assert (0);
+                    return error;
+                }
+                break;
+        }*/
 };
 
-int c_TextureManager::init (unsigned inScreenWidth, unsigned inScreenHeight, std::vector <c_Object*>* iobjects)
+int c_TextureManager::init (unsigned inScreenWidth, unsigned inScreenHeight, c_ObjectsTree* iobjects)
 {
     assert (iobjects);
     assert (!screen);
@@ -90,7 +130,7 @@ int c_TextureManager::init (unsigned inScreenWidth, unsigned inScreenHeight, std
             assert (!error);
             return error;
         }
-
+        lastTics = SDL_GetTicks ();
         std::cout << "Inited\n";
         return 0; //OK
     }
@@ -102,13 +142,21 @@ int c_TextureManager::init (unsigned inScreenWidth, unsigned inScreenHeight, std
 
 int c_TextureManager::render()
 {
-    std::vector <c_GraphicsObject*> graphics[2];
+    std::vector <c_GraphicsObject*> graphics[3];
 
     //int borders[10];
     //for (int i = 0; i < 10; i++)
     //    borders[i] = 0;
 
-    for (int i = 0; i < objects -> size (); i++)
+    c_ObjectsTreeIterator* treeIterator = objects -> getIterator ();
+    c_ObjectsContainer* graphicsContainer = treeIterator -> getContainer (OBJECT_SHIP);
+    c_ObjectsContainerIterator* graphicsIterator = graphicsContainer -> getIterator (objects -> getIterator ());
+    c_Object* ographics = NULL;
+    int error = false;
+    while (ographics = graphicsIterator -> getNextObject ())
+        graphics[((c_GraphicsObject*)(ographics)) -> getTexture ().priority].push_back ((c_GraphicsObject*)(ographics));
+
+    /*for (int i = 0; i < objects -> size (); i++)
         switch ((*objects)[i] -> getKind ())
         {
             case (3):
@@ -117,28 +165,42 @@ int c_TextureManager::render()
             case (4):
                 graphics[((c_GraphicsObject*)((*objects)[i])) -> getTexture ().priority].push_back ((c_GraphicsObject*)((*objects)[i]));
                 break;
-        }
+            case (OBJECT_STAR):
+                graphics[((c_GraphicsObject*)((*objects)[i])) -> getTexture ().priority].push_back ((c_GraphicsObject*)((*objects)[i]));
+                break;
+            case (OBJECT_PLANET):
+                graphics[((c_GraphicsObject*)((*objects)[i])) -> getTexture ().priority].push_back ((c_GraphicsObject*)((*objects)[i]));
+                break;
+        }*/
 
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < 3; i++)
         for (int j = 0; j < graphics[i].size (); j++)
         applySurface ((graphics[i][j] -> getTexture ()).xpos, (graphics[i][j] -> getTexture ()).ypos, (graphics[i][j] -> getTexture ()).surface, screen);
 
     return 0;
 };
 
-int c_TextureManager::refreshScreen (std::vector <c_Object*>* iobjects)
+int c_TextureManager::refreshScreen (c_ObjectsTree* iobjects)
 {
     assert (iobjects);
     objects = iobjects;
 
     render ();
 
+    if (SDL_GetTicks () - lastTics < 1000 / fps)
+    {
+        printf ("delay %d\n", 1000 / fps - (SDL_GetTicks () - lastTics));
+        SDL_Delay (1000 / fps - (SDL_GetTicks () - lastTics));
+
+    }
+
     if (SDL_Flip (screen) == -1)
         {
             assert (0);
             return 1;
         }
-    SDL_Delay (75);
+
+    lastTics = SDL_GetTicks ();
     return 0;
 };
 
