@@ -4,7 +4,7 @@
 #include <vector>
 #include <assert.h>
 
-#include "cl_Object.h"
+#include "c_Objects.h"
 #include "c_EventManager.h"
 
 
@@ -12,15 +12,15 @@ class c_ProcessManager
 {
 private:
     std::vector <c_Object*>* objects;
-    int handleEvents (std::vector <c_Event*>* ievents, std::vector <c_Object*>* iobjects);
-    int think (std::vector <c_Object*>* iobjects);
-    int onMLButtonDown (std::vector <c_Object*>* iobjects, int ix, int iy);
+    int handleEvents (std::vector <c_Event*>* ievents, c_ObjectsTree* iobjects);
+    int think (c_ObjectsTree* iobjects);
+    int onMLButtonDown (c_ObjectsTree* iobjects, int ix, int iy);
 protected:
 public:
-    int process (std::vector <c_Event*>* ievents, std::vector <c_Object*>* iobjects);
+    int process (std::vector <c_Event*>* ievents, c_ObjectsTree* iobjects);
 };
 
-int c_ProcessManager::process (std::vector <c_Event*>* ievents, std::vector <c_Object*>* iobjects)
+int c_ProcessManager::process (std::vector <c_Event*>* ievents, c_ObjectsTree* iobjects)
 {
     assert (ievents); assert (iobjects);
     std::cout << "Processing...\n";
@@ -43,7 +43,7 @@ int c_ProcessManager::process (std::vector <c_Event*>* ievents, std::vector <c_O
     return 0;
 };
 
-int c_ProcessManager::handleEvents (std::vector <c_Event*>* ievents, std::vector <c_Object*>* iobjects)
+int c_ProcessManager::handleEvents (std::vector <c_Event*>* ievents, c_ObjectsTree* iobjects)
 {
     std::cout << "Handling events...\n";
     unsigned error = 0;
@@ -81,38 +81,53 @@ int c_ProcessManager::handleEvents (std::vector <c_Event*>* ievents, std::vector
 };
 
 #define SHIP_DOESNT_FOUND 1
-int c_ProcessManager::onMLButtonDown (std::vector <c_Object*>* iobjects, int ix, int iy)
+int c_ProcessManager::onMLButtonDown (c_ObjectsTree* iobjects, int ix, int iy)
 {
     std::cout << "onMLButtonDown'ing...\n";
     assert (ix >= 0); assert (iy >= 0);
     assert (iobjects);
 
-    for (int i = 0; i < iobjects -> size (); i++)
-        if (((*iobjects)[i]) -> getKind () == OBJECT_SHIP)
-        {
-            c_Ship* ship = (c_Ship*)((*iobjects)[i]);
-            ship -> setXDest (ix);
-            ship -> setYDest (iy);
-            ship -> setDestChanged (true);
-            return 0;
-        }
+    c_ObjectsContainerIterator* shipsIterator = iobjects -> getObjectsIterator (OBJECT_SHIP);
+    c_Object* oship = NULL;
+
+    while (oship = shipsIterator -> getNextObject ())
+    {
+        assert (oship -> getKind () == OBJECT_SHIP);
+        std::cout << "SHIP_DEST_CHANGED\n";
+        c_Ship* ship = (c_Ship*) oship;
+        std::cout << "SPIP_SPEED_" << ship -> getSpeed () << "\n";
+        ship -> setXDest (ix);
+        ship -> setYDest (iy);
+        ship -> setDestChanged (true);
+        shipsIterator -> ~c_ObjectsContainerIterator ();
+        return 0;
+    }
 
     assert (0);
     return SHIP_DOESNT_FOUND;
 };
 
-int c_ProcessManager::think (std::vector <c_Object*>* iobjects)
+int c_ProcessManager::think (c_ObjectsTree* iobjects)
 {
     std::cout << "Thinking\n";
     assert (iobjects);
 
+    c_ObjectsTreeIterator* treeIterator = iobjects -> getIterator ();
+    c_ObjectsContainer* objectsContainer = treeIterator -> getContainer (OBJECT_OBJECT);
+    c_ObjectsContainerIterator* objectsIterator = objectsContainer -> getIterator (iobjects -> getIterator ());
+    c_Object* object = NULL;
     int error = false;
-    for (int i = 0; i < iobjects -> size (); i++)
+    while (object = objectsIterator -> getNextObject ())
     {
-        switch (((*iobjects)[i]) -> getKind ())
+        switch (object -> getKind ())
         {
             case OBJECT_SHIP:
-                error = ((c_Ship*)((*iobjects)[i])) -> think ();
+                error = ((c_Ship*)(object)) -> think ();
+                if (error)
+                    return error;
+                break;
+            case OBJECT_PLANET:
+                error = ((c_Planet*)(object)) -> think ();
                 if (error)
                     return error;
                 break;
