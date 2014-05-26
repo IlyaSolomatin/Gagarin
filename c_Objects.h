@@ -7,6 +7,14 @@
 #include <string>
 #include <vector>
 
+struct s_Texture
+{
+    SDL_Surface* surface;
+    unsigned priority;
+    unsigned xpos;
+    unsigned ypos;
+};
+
 #ifndef OBJECT_OBJECT
 #define OBJECT_OBJECT 1
 
